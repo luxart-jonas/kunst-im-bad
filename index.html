@@ -41,7 +41,8 @@
   .upload-zone .icon { font-size: 36px; margin-bottom: 8px; }
   .upload-zone.loaded { padding: 16px 48px; }
   #preview-img { max-width: 180px; max-height: 120px; border-radius: 8px; display: none; object-fit: cover; }
-  #audio-preview { display: none; margin-top: 8px; font-size: 13px; color: #4ade80; }
+  #audio-preview { display: none; margin-top: 8px; font-size: 13px; color: #4ade80; pointer-events: none; }
+  .upload-zone, .upload-zone * { pointer-events: auto; cursor: pointer; }
   .settings-row { display: flex; align-items: center; gap: 12px; color: #aaa; font-size: 14px; width: 100%; max-width: 420px; }
   .settings-row label { min-width: 110px; }
   .settings-row input[type=range] { flex: 1; accent-color: #fff; }
@@ -94,22 +95,22 @@
   <h1>Motion Display</h1>
 
   <span class="section-label">Bild</span>
-  <div class="upload-zone" id="upload-zone">
+  <label class="upload-zone" id="upload-zone" for="file-input">
     <div class="icon">🖼️</div>
     <strong style="font-size:15px">Bild hochladen</strong>
     <p>Drag & Drop oder klicken</p>
-  </div>
+  </label>
   <input type="file" id="file-input" accept="image/*" style="display:none">
   <img id="preview-img" alt="Vorschau">
 
   <hr class="divider">
   <span class="section-label">Sound (optional)</span>
 
-  <div class="upload-zone" id="audio-zone">
+  <label class="upload-zone" id="audio-zone" for="audio-input">
     <div class="icon">🔊</div>
     <strong style="font-size:15px">Audio hochladen</strong>
     <p>MP3, WAV, OGG — läuft im Loop</p>
-  </div>
+  </label>
   <input type="file" id="audio-input" accept="audio/*" style="display:none">
   <div id="audio-preview">✓ <span id="audio-filename"></span></div>
 
@@ -185,8 +186,6 @@ const exitBtn = document.getElementById('exit-btn');
 const ctx = diffCanvas.getContext('2d');
 
 // Bild Upload
-uploadZone.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', e => loadImage(e.target.files[0]));
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
 uploadZone.addEventListener('drop', e => {
@@ -207,8 +206,9 @@ function loadImage(file) {
   reader.readAsDataURL(file);
 }
 
+fileInput.addEventListener('change', e => loadImage(e.target.files[0]));
+
 // Audio Upload
-audioZone.addEventListener('click', () => audioInput.click());
 audioInput.addEventListener('change', e => loadAudio(e.target.files[0]));
 audioZone.addEventListener('dragover', e => { e.preventDefault(); audioZone.classList.add('drag'); });
 audioZone.addEventListener('dragleave', () => audioZone.classList.remove('drag'));
