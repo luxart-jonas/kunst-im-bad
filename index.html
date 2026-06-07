@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motion Display</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+  #setup-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 24px;
+    padding: 40px;
+    background: #0a0a0a;
+  }
+  #setup-screen h1 { font-size: 22px; font-weight: 400; letter-spacing: 0.05em; color: #fff; }
+  .upload-zone {
+    border: 1px dashed #444;
+    border-radius: 16px;
+    padding: 48px 64px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    width: 100%;
+    max-width: 420px;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: #888; background: #111; }
+  .upload-zone p { color: #666; font-size: 14px; margin-top: 8px; }
+  .upload-zone .icon { font-size: 40px; margin-bottom: 8px; }
+  #preview-img { max-width: 200px; max-height: 150px; border-radius: 8px; display: none; object-fit: cover; }
+  .settings-row { display: flex; align-items: center; gap: 12px; color: #aaa; font-size: 14px; }
+  .settings-row input[type=range] { width: 160px; accent-color: #fff; }
+  .settings-row span { min-width: 60px; color: #fff; font-size: 14px; }
+  .start-btn {
+    background: #fff; color: #000; border: none; border-radius: 100px;
+    padding: 14px 48px; font-size: 16px; font-weight: 500; cursor: pointer;
+    letter-spacing: 0.02em; transition: opacity 0.2s;
+  }
+  .start-btn:hover { opacity: 0.85; }
+  .start-btn:disabled { opacity: 0.3; cursor: default; }
+  #display-screen { display: none; position: fixed; inset: 0; background: #000; cursor: none; }
+  #display-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; opacity: 0; transition: opacity 0.6s ease;
+  }
+  #display-img.visible { opacity: 1; }
+  #video-feed { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  #status-bar {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,255,255,0.08); border: 0.5px solid rgba(255,255,255,0.15);
+    border-radius: 100px; padding: 8px 20px; font-size: 12px;
+    color: rgba(255,255,255,0.5); letter-spacing: 0.06em;
+    opacity: 0; transition: opacity 0.3s; white-space: nowrap;
+  }
+  #display-screen:hover #status-bar { opacity: 1; }
+  #exit-btn {
+    position: absolute; top: 20px; right: 20px;
+    background: rgba(255,255,255,0.08); border: 0.5px solid rgba(255,255,255,0.15);
+    border-radius: 100px; padding: 8px 18px; font-size: 12px;
+    color: rgba(255,255,255,0.5); cursor: pointer;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  #display-screen:hover #exit-btn { opacity: 1; }
+  #motion-dot {
+    position: absolute; top: 20px; left: 20px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #333; transition: background 0.2s;
+  }
+  #motion-dot.active { background: #4ade80; }
+  canvas#diff-canvas { display: none; }
+  .cam-hint { font-size: 12px; color: #555; text-align: center; max-width: 320px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div id="setup-screen">
+  <h1>Motion Display</h1>
+
+  <div class="upload-zone" id="upload-zone">
+    <div class="icon">🖼️</div>
+    <strong style="font-size:15px">Bild hochladen</strong>
+    <p>Drag & Drop oder klicken</p>
+  </div>
+  <input type="file" id="file-input" accept="image/*" style="display:none">
+  <img id="preview-img" alt="Vorschau">
+
+  <div class="settings-row">
+    <label>Anzeigedauer</label>
+    <input type="range" id="duration-slider" min="30" max="600" step="10" value="180">
+    <span id="duration-label">3:00 min</span>
+  </div>
+
+  <div class="settings-row">
+    <label>Empfindlichkeit</label>
+    <input type="range" id="sensitivity-slider" min="5" max="50" step="1" value="20">
+    <span id="sensitivity-label">Mittel</span>
+  </div>
+
+  <button class="start-btn" id="start-btn" disabled>Starten</button>
+  <p class="cam-hint">⚠️ Nutzt die Frontkamera (FaceTime-Kamera). Das iPad muss so ausgerichtet sein, dass die Frontkamera den Raum erfasst.</p>
+</div>
+
+<div id="display-screen">
+  <img id="display-img" alt="">
+  <video id="video-feed" autoplay muted playsinline></video>
+  <canvas id="diff-canvas" width="160" height="120"></canvas>
+  <div id="motion-dot" title="Bewegungssensor"></div>
+  <div id="status-bar">WARTEN AUF BEWEGUNG</div>
+  <button id="exit-btn">✕ Beenden</button>
+</div>
+
+<script>
+let imageDataURL = null;
+let displayDuration = 180;
+let sensitivityThreshold = 20;
+let hideTimer = null;
+let stream = null;
+let motionInterval = null;
+let prevPixels = null;
+let isDisplaying = false;
+
+const uploadZone = document.getElementById('upload-zone');
+const fileInput = document.getElementById('file-input');
+const previewImg = document.getElementById('preview-img');
+const startBtn = document.getElementById('start-btn');
+const durationSlider = document.getElementById('duration-slider');
+const durationLabel = document.getElementById('duration-label');
+const sensitivitySlider = document.getElementById('sensitivity-slider');
+const sensitivityLabel = document.getElementById('sensitivity-label');
+const displayScreen = document.getElementById('display-screen');
+const displayImg = document.getElementById('display-img');
+const videoFeed = document.getElementById('video-feed');
+const diffCanvas = document.getElementById('diff-canvas');
+const motionDot = document.getElementById('motion-dot');
+const statusBar = document.getElementById('status-bar');
+const exitBtn = document.getElementById('exit-btn');
+const ctx = diffCanvas.getContext('2d');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => loadImage(e.target.files[0]));
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
+});
+
+function loadImage(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    imageDataURL = ev.target.result;
+    previewImg.src = imageDataURL;
+    previewImg.style.display = 'block';
+    uploadZone.style.padding = '16px 64px';
+    startBtn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+durationSlider.addEventListener('input', () => {
+  displayDuration = parseInt(durationSlider.value);
+  const m = Math.floor(displayDuration / 60);
+  const s = displayDuration % 60;
+  durationLabel.textContent = s === 0 ? `${m}:00 min` : `${m}:${String(s).padStart(2,'0')} min`;
+});
+
+sensitivitySlider.addEventListener('input', () => {
+  sensitivityThreshold = parseInt(sensitivitySlider.value);
+  const labels = {5:'Sehr hoch', 15:'Hoch', 25:'Mittel', 35:'Niedrig', 50:'Sehr niedrig'};
+  const closest = Object.keys(labels).reduce((a,b) =>
+    Math.abs(b - sensitivityThreshold) < Math.abs(a - sensitivityThreshold) ? b : a);
+  sensitivityLabel.textContent = labels[closest];
+});
+
+startBtn.addEventListener('click', async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    await launch();
+  } catch(err) {
+    alert('Kamera konnte nicht gestartet werden: ' + err.message);
+  }
+});
+
+async function launch() {
+  videoFeed.srcObject = stream;
+  await new Promise(res => videoFeed.addEventListener('loadeddata', res, { once: true }));
+  displayImg.src = imageDataURL;
+  document.getElementById('setup-screen').style.display = 'none';
+  displayScreen.style.display = 'block';
+  startMotionDetection();
+}
+
+exitBtn.addEventListener('click', () => {
+  stopAll();
+  document.getElementById('setup-screen').style.display = 'flex';
+  displayScreen.style.display = 'none';
+  isDisplaying = false;
+  displayImg.classList.remove('visible');
+  statusBar.textContent = 'WARTEN AUF BEWEGUNG';
+});
+
+function startMotionDetection() {
+  prevPixels = null;
+  motionInterval = setInterval(checkMotion, 200);
+}
+
+function checkMotion() {
+  if (videoFeed.readyState < 2) return;
+  ctx.drawImage(videoFeed, 0, 0, 160, 120);
+  const frame = ctx.getImageData(0, 0, 160, 120);
+  const pixels = frame.data;
+
+  if (!prevPixels) { prevPixels = new Uint8ClampedArray(pixels); return; }
+
+  let diff = 0;
+  for (let i = 0; i < pixels.length; i += 4) {
+    diff += Math.abs(pixels[i]   - prevPixels[i])
+          + Math.abs(pixels[i+1] - prevPixels[i+1])
+          + Math.abs(pixels[i+2] - prevPixels[i+2]);
+  }
+  const avgDiff = diff / (160 * 120 * 3);
+  prevPixels = new Uint8ClampedArray(pixels);
+
+  const threshold = 51 - sensitivityThreshold;
+  if (avgDiff > threshold) {
+    motionDot.classList.add('active');
+    setTimeout(() => motionDot.classList.remove('active'), 300);
+    onMotionDetected();
+  }
+}
+
+function onMotionDetected() {
+  if (hideTimer) clearTimeout(hideTimer);
+  if (!isDisplaying) {
+    isDisplaying = true;
+    displayImg.classList.add('visible');
+    statusBar.textContent = 'AKTIV';
+  }
+  hideTimer = setTimeout(() => {
+    displayImg.classList.remove('visible');
+    isDisplaying = false;
+    statusBar.textContent = 'WARTEN AUF BEWEGUNG';
+    hideTimer = null;
+  }, displayDuration * 1000);
+}
+
+function stopAll() {
+  if (motionInterval) { clearInterval(motionInterval); motionInterval = null; }
+  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  prevPixels = null;
+}
+</script>
+</body>
+</html>
