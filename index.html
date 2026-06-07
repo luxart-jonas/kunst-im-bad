@@ -3,31 +3,345 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Audio Test</title>
+<title>Motion Display</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #setup-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 24px;
+    padding: 40px;
+    background: #0a0a0a;
+    overflow-y: auto;
+  }
+  #setup-screen h1 { font-size: 22px; font-weight: 400; letter-spacing: 0.05em; }
+  .upload-zone {
+    border: 1px dashed #444;
+    border-radius: 16px;
+    padding: 28px 48px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    width: 100%;
+    max-width: 420px;
+    display: block;
+    position: relative;
+  }
+  .upload-zone:active { background: #111; border-color: #888; }
+  .upload-zone p { color: #666; font-size: 14px; margin-top: 6px; }
+  .upload-zone .icon { font-size: 32px; margin-bottom: 6px; }
+  /* file input versteckt aber erreichbar für iOS */
+  .upload-zone input[type=file] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 16px; /* verhindert iOS zoom */
+  }
+  #preview-img { max-width: 180px; max-height: 120px; border-radius: 8px; display: none; object-fit: cover; margin-top: -8px; }
+  .loaded-label { font-size: 13px; color: #4ade80; display: none; margin-top: -8px; }
+  .settings-row { display: flex; align-items: center; gap: 12px; color: #aaa; font-size: 14px; width: 100%; max-width: 420px; }
+  .settings-row label { min-width: 110px; }
+  .settings-row input[type=range] { flex: 1; accent-color: #fff; }
+  .settings-row span { min-width: 60px; color: #fff; font-size: 14px; text-align: right; }
+  .section-label { font-size: 11px; letter-spacing: 0.12em; color: #444; text-transform: uppercase; align-self: flex-start; margin-bottom: -12px; }
+  .divider { width: 100%; max-width: 420px; border: none; border-top: 1px solid #1a1a1a; }
+  .start-btn {
+    background: #fff; color: #000; border: none; border-radius: 100px;
+    padding: 14px 48px; font-size: 16px; font-weight: 500; cursor: pointer;
+    letter-spacing: 0.02em; transition: opacity 0.2s; -webkit-appearance: none;
+  }
+  .start-btn:disabled { opacity: 0.3; cursor: default; }
+  .cam-hint { font-size: 12px; color: #444; text-align: center; max-width: 340px; line-height: 1.6; }
+
+  #display-screen { display: none; position: fixed; inset: 0; background: #000; user-select: none; }
+  #display-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; opacity: 0; transition: opacity 0.6s ease;
+  }
+  #display-img.visible { opacity: 1; }
+  #video-feed { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  canvas#diff-canvas { display: none; }
+  #status-bar {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,255,255,0.08); border: 0.5px solid rgba(255,255,255,0.15);
+    border-radius: 100px; padding: 8px 20px; font-size: 12px;
+    color: rgba(255,255,255,0.5); letter-spacing: 0.06em; white-space: nowrap;
+  }
+  #exit-btn {
+    position: absolute; top: 20px; right: 20px;
+    background: rgba(255,255,255,0.08); border: 0.5px solid rgba(255,255,255,0.15);
+    border-radius: 100px; padding: 10px 20px; font-size: 13px;
+    color: rgba(255,255,255,0.6); cursor: pointer; -webkit-appearance: none;
+  }
+  #motion-dot {
+    position: absolute; top: 26px; left: 20px;
+    width: 8px; height: 8px; border-radius: 50%; background: #333; transition: background 0.2s;
+  }
+  #motion-dot.active { background: #4ade80; }
+</style>
 </head>
-<body style="background:#111;color:#fff;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:32px;margin:0;">
+<body>
 
-<p style="font-size:18px;">Audio hochladen & abspielen</p>
+<div id="setup-screen">
+  <h1>Motion Display</h1>
 
-<input type="file" id="picker" accept="*/*">
+  <span class="section-label">Bild</span>
+  <label class="upload-zone" id="upload-zone">
+    <div class="icon">🖼️</div>
+    <strong style="font-size:15px">Bild hochladen</strong>
+    <p>Tippen zum Auswählen</p>
+    <input type="file" id="file-input" accept="*/*">
+  </label>
+  <img id="preview-img" alt="Vorschau">
 
-<p id="status" style="color:#888;font-size:14px;">Noch keine Datei</p>
+  <hr class="divider">
+  <span class="section-label">Sound (optional)</span>
 
-<audio id="player" controls style="width:300px;display:none;"></audio>
+  <label class="upload-zone" id="audio-zone">
+    <div class="icon">🔊</div>
+    <strong id="audio-label-text" style="font-size:15px">Audio hochladen</strong>
+    <p id="audio-label-sub">MP3, WAV — läuft im Loop</p>
+    <input type="file" id="audio-input" accept="*/*">
+  </label>
+  <div class="loaded-label" id="audio-loaded">✓ Datei geladen</div>
+
+  <hr class="divider">
+  <span class="section-label">Einstellungen</span>
+
+  <div class="settings-row">
+    <label>Anzeigedauer</label>
+    <input type="range" id="duration-slider" min="30" max="600" step="10" value="180">
+    <span id="duration-label">3:00 min</span>
+  </div>
+  <div class="settings-row">
+    <label>Empfindlichkeit</label>
+    <input type="range" id="sensitivity-slider" min="5" max="50" step="1" value="20">
+    <span id="sensitivity-label">Mittel</span>
+  </div>
+  <div class="settings-row">
+    <label>Lautstärke</label>
+    <input type="range" id="volume-slider" min="0" max="100" step="5" value="70">
+    <span id="volume-label">70%</span>
+  </div>
+
+  <button class="start-btn" id="start-btn" disabled>Starten</button>
+  <p class="cam-hint">Nutzt die Frontkamera. iPad so ausrichten dass die Frontkamera den Raum erfasst.</p>
+</div>
+
+<div id="display-screen">
+  <img id="display-img" alt="">
+  <video id="video-feed" autoplay muted playsinline></video>
+  <canvas id="diff-canvas" width="160" height="120"></canvas>
+  <div id="motion-dot"></div>
+  <div id="status-bar">WARTEN AUF BEWEGUNG</div>
+  <button id="exit-btn">✕ Beenden</button>
+</div>
 
 <script>
-document.getElementById('picker').addEventListener('change', function(e) {
+let imageObjectURL = null;
+let audioObjectURL = null;
+let displayDuration = 180;
+let sensitivityThreshold = 20;
+let volume = 0.7;
+let hideTimer = null;
+let stream = null;
+let motionInterval = null;
+let prevPixels = null;
+let isDisplaying = false;
+let audioEl = null;
+let audioUnlocked = false;
+let fadeTimer = null;
+
+const fileInput    = document.getElementById('file-input');
+const audioInput   = document.getElementById('audio-input');
+const previewImg   = document.getElementById('preview-img');
+const audioLoaded  = document.getElementById('audio-loaded');
+const audioLabelText = document.getElementById('audio-label-text');
+const audioLabelSub  = document.getElementById('audio-label-sub');
+const startBtn     = document.getElementById('start-btn');
+const durationSlider   = document.getElementById('duration-slider');
+const durationLabel    = document.getElementById('duration-label');
+const sensitivitySlider = document.getElementById('sensitivity-slider');
+const sensitivityLabel  = document.getElementById('sensitivity-label');
+const volumeSlider = document.getElementById('volume-slider');
+const volumeLabel  = document.getElementById('volume-label');
+const displayScreen = document.getElementById('display-screen');
+const displayImg   = document.getElementById('display-img');
+const videoFeed    = document.getElementById('video-feed');
+const diffCanvas   = document.getElementById('diff-canvas');
+const motionDot    = document.getElementById('motion-dot');
+const statusBar    = document.getElementById('status-bar');
+const exitBtn      = document.getElementById('exit-btn');
+const ctx = diffCanvas.getContext('2d');
+
+// Bild
+fileInput.addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
-  document.getElementById('status').textContent = 'Datei: ' + file.name + ' (' + file.type + ')';
-  const url = URL.createObjectURL(file);
-  const player = document.getElementById('player');
-  player.src = url;
-  player.style.display = 'block';
-  player.play().catch(err => {
-    document.getElementById('status').textContent += ' — Fehler: ' + err.message;
-  });
+  if (imageObjectURL) URL.revokeObjectURL(imageObjectURL);
+  imageObjectURL = URL.createObjectURL(file);
+  previewImg.src = imageObjectURL;
+  previewImg.style.display = 'block';
+  startBtn.disabled = false;
 });
+
+// Audio
+audioInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (audioObjectURL) URL.revokeObjectURL(audioObjectURL);
+  audioObjectURL = URL.createObjectURL(file);
+  const name = file.name.length > 26 ? file.name.slice(0,24)+'…' : file.name;
+  audioLabelText.textContent = name;
+  audioLabelSub.textContent = 'Anderes auswählen';
+  audioLoaded.style.display = 'block';
+  // Audio-Element sofort anlegen damit iOS es kennt
+  audioEl = new Audio();
+  audioEl.src = audioObjectURL;
+  audioEl.loop = true;
+  audioEl.volume = 0;
+  audioEl.load();
+});
+
+// Slider
+durationSlider.addEventListener('input', () => {
+  displayDuration = parseInt(durationSlider.value);
+  const m = Math.floor(displayDuration / 60);
+  const s = displayDuration % 60;
+  durationLabel.textContent = s === 0 ? `${m}:00 min` : `${m}:${String(s).padStart(2,'0')} min`;
+});
+sensitivitySlider.addEventListener('input', () => {
+  sensitivityThreshold = parseInt(sensitivitySlider.value);
+  const map = {5:'Sehr hoch',15:'Hoch',25:'Mittel',35:'Niedrig',50:'Sehr niedrig'};
+  const k = Object.keys(map).reduce((a,b) => Math.abs(b-sensitivityThreshold) < Math.abs(a-sensitivityThreshold) ? b : a);
+  sensitivityLabel.textContent = map[k];
+});
+volumeSlider.addEventListener('input', () => {
+  volume = parseInt(volumeSlider.value) / 100;
+  volumeLabel.textContent = volumeSlider.value + '%';
+  if (audioEl) audioEl.volume = volume;
+});
+
+// Start — der Tap auf diesen Button ist der User-Gesture für iOS Audio
+startBtn.addEventListener('click', async () => {
+  // iOS Audio freischalten: kurz play/pause im direkten Tap-Handler
+  if (audioEl) {
+    audioEl.volume = 0;
+    audioEl.play().then(() => {
+      audioEl.pause();
+      audioEl.currentTime = 0;
+      audioUnlocked = true;
+    }).catch(() => { audioUnlocked = true; });
+  }
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    await launch();
+  } catch(err) {
+    alert('Kamera konnte nicht gestartet werden: ' + err.message);
+  }
+});
+
+async function launch() {
+  videoFeed.srcObject = stream;
+  await new Promise(res => videoFeed.addEventListener('loadeddata', res, { once: true }));
+  displayImg.src = imageObjectURL;
+  document.getElementById('setup-screen').style.display = 'none';
+  displayScreen.style.display = 'block';
+  startMotionDetection();
+}
+
+exitBtn.addEventListener('click', () => {
+  stopAll();
+  document.getElementById('setup-screen').style.display = 'flex';
+  displayScreen.style.display = 'none';
+  isDisplaying = false;
+  displayImg.classList.remove('visible');
+  statusBar.textContent = 'WARTEN AUF BEWEGUNG';
+});
+
+function startMotionDetection() {
+  prevPixels = null;
+  motionInterval = setInterval(checkMotion, 200);
+}
+
+function checkMotion() {
+  if (videoFeed.readyState < 2) return;
+  ctx.drawImage(videoFeed, 0, 0, 160, 120);
+  const pixels = ctx.getImageData(0, 0, 160, 120).data;
+  if (!prevPixels) { prevPixels = new Uint8ClampedArray(pixels); return; }
+  let diff = 0;
+  for (let i = 0; i < pixels.length; i += 4) {
+    diff += Math.abs(pixels[i]-prevPixels[i]) + Math.abs(pixels[i+1]-prevPixels[i+1]) + Math.abs(pixels[i+2]-prevPixels[i+2]);
+  }
+  prevPixels = new Uint8ClampedArray(pixels);
+  if (diff / (160*120*3) > (51 - sensitivityThreshold)) {
+    motionDot.classList.add('active');
+    setTimeout(() => motionDot.classList.remove('active'), 300);
+    onMotionDetected();
+  }
+}
+
+function onMotionDetected() {
+  if (hideTimer) clearTimeout(hideTimer);
+  if (!isDisplaying) {
+    isDisplaying = true;
+    displayImg.classList.add('visible');
+    statusBar.textContent = 'AKTIV';
+    if (audioEl && audioUnlocked) {
+      audioEl.currentTime = 0;
+      audioEl.play().catch(() => {});
+      fadeAudio(0, volume, 1500);
+    }
+  }
+  hideTimer = setTimeout(() => {
+    displayImg.classList.remove('visible');
+    isDisplaying = false;
+    statusBar.textContent = 'WARTEN AUF BEWEGUNG';
+    hideTimer = null;
+    if (audioEl) fadeAudio(volume, 0, 2000, () => { audioEl.pause(); audioEl.currentTime = 0; });
+  }, displayDuration * 1000);
+}
+
+function fadeAudio(fromVol, toVol, durationMs, onDone) {
+  if (fadeTimer) clearInterval(fadeTimer);
+  const steps = 30;
+  const delta = (toVol - fromVol) / steps;
+  let step = 0;
+  audioEl.volume = fromVol;
+  fadeTimer = setInterval(() => {
+    step++;
+    audioEl.volume = Math.min(1, Math.max(0, fromVol + delta * step));
+    if (step >= steps) {
+      clearInterval(fadeTimer); fadeTimer = null;
+      if (onDone) onDone();
+    }
+  }, durationMs / steps);
+}
+
+function stopAll() {
+  if (motionInterval) { clearInterval(motionInterval); motionInterval = null; }
+  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (audioEl) { audioEl.pause(); audioEl.currentTime = 0; }
+  prevPixels = null; isDisplaying = false; audioUnlocked = false;
+}
 </script>
 </body>
 </html>
