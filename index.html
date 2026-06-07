@@ -23,12 +23,13 @@
     gap: 24px;
     padding: 40px;
     background: #0a0a0a;
+    overflow-y: auto;
   }
   #setup-screen h1 { font-size: 22px; font-weight: 400; letter-spacing: 0.05em; color: #fff; }
   .upload-zone {
     border: 1px dashed #444;
     border-radius: 16px;
-    padding: 48px 64px;
+    padding: 32px 48px;
     text-align: center;
     cursor: pointer;
     transition: border-color 0.2s, background 0.2s;
@@ -37,11 +38,16 @@
   }
   .upload-zone:hover, .upload-zone.drag { border-color: #888; background: #111; }
   .upload-zone p { color: #666; font-size: 14px; margin-top: 8px; }
-  .upload-zone .icon { font-size: 40px; margin-bottom: 8px; }
-  #preview-img { max-width: 200px; max-height: 150px; border-radius: 8px; display: none; object-fit: cover; }
-  .settings-row { display: flex; align-items: center; gap: 12px; color: #aaa; font-size: 14px; }
-  .settings-row input[type=range] { width: 160px; accent-color: #fff; }
-  .settings-row span { min-width: 60px; color: #fff; font-size: 14px; }
+  .upload-zone .icon { font-size: 36px; margin-bottom: 8px; }
+  .upload-zone.loaded { padding: 16px 48px; }
+  #preview-img { max-width: 180px; max-height: 120px; border-radius: 8px; display: none; object-fit: cover; }
+  #audio-preview { display: none; margin-top: 8px; font-size: 13px; color: #4ade80; }
+  .settings-row { display: flex; align-items: center; gap: 12px; color: #aaa; font-size: 14px; width: 100%; max-width: 420px; }
+  .settings-row label { min-width: 110px; }
+  .settings-row input[type=range] { flex: 1; accent-color: #fff; }
+  .settings-row span { min-width: 60px; color: #fff; font-size: 14px; text-align: right; }
+  .section-label { font-size: 11px; letter-spacing: 0.12em; color: #444; text-transform: uppercase; align-self: flex-start; margin-bottom: -12px; }
+  .divider { width: 100%; max-width: 420px; border: none; border-top: 1px solid #1a1a1a; }
   .start-btn {
     background: #fff; color: #000; border: none; border-radius: 100px;
     padding: 14px 48px; font-size: 16px; font-weight: 500; cursor: pointer;
@@ -79,7 +85,7 @@
   }
   #motion-dot.active { background: #4ade80; }
   canvas#diff-canvas { display: none; }
-  .cam-hint { font-size: 12px; color: #555; text-align: center; max-width: 320px; line-height: 1.5; }
+  .cam-hint { font-size: 12px; color: #444; text-align: center; max-width: 340px; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -87,6 +93,7 @@
 <div id="setup-screen">
   <h1>Motion Display</h1>
 
+  <span class="section-label">Bild</span>
   <div class="upload-zone" id="upload-zone">
     <div class="icon">🖼️</div>
     <strong style="font-size:15px">Bild hochladen</strong>
@@ -94,6 +101,20 @@
   </div>
   <input type="file" id="file-input" accept="image/*" style="display:none">
   <img id="preview-img" alt="Vorschau">
+
+  <hr class="divider">
+  <span class="section-label">Sound (optional)</span>
+
+  <div class="upload-zone" id="audio-zone">
+    <div class="icon">🔊</div>
+    <strong style="font-size:15px">Audio hochladen</strong>
+    <p>MP3, WAV, OGG — läuft im Loop</p>
+  </div>
+  <input type="file" id="audio-input" accept="audio/*" style="display:none">
+  <div id="audio-preview">✓ <span id="audio-filename"></span></div>
+
+  <hr class="divider">
+  <span class="section-label">Einstellungen</span>
 
   <div class="settings-row">
     <label>Anzeigedauer</label>
@@ -107,8 +128,14 @@
     <span id="sensitivity-label">Mittel</span>
   </div>
 
+  <div class="settings-row">
+    <label>Lautstärke</label>
+    <input type="range" id="volume-slider" min="0" max="100" step="5" value="70">
+    <span id="volume-label">70%</span>
+  </div>
+
   <button class="start-btn" id="start-btn" disabled>Starten</button>
-  <p class="cam-hint">⚠️ Nutzt die Frontkamera (FaceTime-Kamera). Das iPad muss so ausgerichtet sein, dass die Frontkamera den Raum erfasst.</p>
+  <p class="cam-hint">Nutzt die Frontkamera (FaceTime-Kamera). Das iPad muss so ausgerichtet sein, dass die Frontkamera den Raum erfasst.</p>
 </div>
 
 <div id="display-screen">
@@ -122,22 +149,32 @@
 
 <script>
 let imageDataURL = null;
+let audioDataURL = null;
 let displayDuration = 180;
 let sensitivityThreshold = 20;
+let volume = 0.7;
 let hideTimer = null;
 let stream = null;
 let motionInterval = null;
 let prevPixels = null;
 let isDisplaying = false;
+let audioEl = null;
+let fadeOutTimer = null;
 
 const uploadZone = document.getElementById('upload-zone');
 const fileInput = document.getElementById('file-input');
 const previewImg = document.getElementById('preview-img');
+const audioZone = document.getElementById('audio-zone');
+const audioInput = document.getElementById('audio-input');
+const audioPreview = document.getElementById('audio-preview');
+const audioFilename = document.getElementById('audio-filename');
 const startBtn = document.getElementById('start-btn');
 const durationSlider = document.getElementById('duration-slider');
 const durationLabel = document.getElementById('duration-label');
 const sensitivitySlider = document.getElementById('sensitivity-slider');
 const sensitivityLabel = document.getElementById('sensitivity-label');
+const volumeSlider = document.getElementById('volume-slider');
+const volumeLabel = document.getElementById('volume-label');
 const displayScreen = document.getElementById('display-screen');
 const displayImg = document.getElementById('display-img');
 const videoFeed = document.getElementById('video-feed');
@@ -147,6 +184,7 @@ const statusBar = document.getElementById('status-bar');
 const exitBtn = document.getElementById('exit-btn');
 const ctx = diffCanvas.getContext('2d');
 
+// Bild Upload
 uploadZone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', e => loadImage(e.target.files[0]));
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
@@ -163,12 +201,43 @@ function loadImage(file) {
     imageDataURL = ev.target.result;
     previewImg.src = imageDataURL;
     previewImg.style.display = 'block';
-    uploadZone.style.padding = '16px 64px';
-    startBtn.disabled = false;
+    uploadZone.classList.add('loaded');
+    checkReady();
   };
   reader.readAsDataURL(file);
 }
 
+// Audio Upload
+audioZone.addEventListener('click', () => audioInput.click());
+audioInput.addEventListener('change', e => loadAudio(e.target.files[0]));
+audioZone.addEventListener('dragover', e => { e.preventDefault(); audioZone.classList.add('drag'); });
+audioZone.addEventListener('dragleave', () => audioZone.classList.remove('drag'));
+audioZone.addEventListener('drop', e => {
+  e.preventDefault(); audioZone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) loadAudio(e.dataTransfer.files[0]);
+});
+
+function loadAudio(file) {
+  if (!file || !file.type.startsWith('audio/')) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    audioDataURL = ev.target.result;
+    audioFilename.textContent = file.name;
+    audioPreview.style.display = 'block';
+    audioZone.classList.add('loaded');
+    audioZone.style.padding = '12px 48px';
+    audioZone.querySelector('.icon').textContent = '✓';
+    audioZone.querySelector('strong').textContent = file.name.length > 28 ? file.name.slice(0,26)+'…' : file.name;
+    audioZone.querySelector('p').textContent = 'Anderes hochladen';
+  };
+  reader.readAsDataURL(file);
+}
+
+function checkReady() {
+  startBtn.disabled = !imageDataURL;
+}
+
+// Slider
 durationSlider.addEventListener('input', () => {
   displayDuration = parseInt(durationSlider.value);
   const m = Math.floor(displayDuration / 60);
@@ -184,6 +253,13 @@ sensitivitySlider.addEventListener('input', () => {
   sensitivityLabel.textContent = labels[closest];
 });
 
+volumeSlider.addEventListener('input', () => {
+  volume = parseInt(volumeSlider.value) / 100;
+  volumeLabel.textContent = volumeSlider.value + '%';
+  if (audioEl) audioEl.volume = volume;
+});
+
+// Start
 startBtn.addEventListener('click', async () => {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -198,6 +274,14 @@ startBtn.addEventListener('click', async () => {
 async function launch() {
   videoFeed.srcObject = stream;
   await new Promise(res => videoFeed.addEventListener('loadeddata', res, { once: true }));
+
+  // Audio vorbereiten
+  if (audioDataURL) {
+    audioEl = new Audio(audioDataURL);
+    audioEl.loop = true;
+    audioEl.volume = 0;
+  }
+
   displayImg.src = imageDataURL;
   document.getElementById('setup-screen').style.display = 'none';
   displayScreen.style.display = 'block';
@@ -245,24 +329,61 @@ function checkMotion() {
 
 function onMotionDetected() {
   if (hideTimer) clearTimeout(hideTimer);
+  if (fadeOutTimer) { clearInterval(fadeOutTimer); fadeOutTimer = null; }
+
   if (!isDisplaying) {
     isDisplaying = true;
     displayImg.classList.add('visible');
     statusBar.textContent = 'AKTIV';
+    // Audio einblenden
+    if (audioEl) {
+      audioEl.currentTime = 0;
+      audioEl.play().catch(() => {});
+      fadeAudio(audioEl, 0, volume, 1500);
+    }
   }
+
   hideTimer = setTimeout(() => {
     displayImg.classList.remove('visible');
     isDisplaying = false;
     statusBar.textContent = 'WARTEN AUF BEWEGUNG';
     hideTimer = null;
+    // Audio ausblenden
+    if (audioEl) {
+      fadeAudio(audioEl, volume, 0, 2000, () => {
+        audioEl.pause();
+        audioEl.currentTime = 0;
+      });
+    }
   }, displayDuration * 1000);
+}
+
+function fadeAudio(el, fromVol, toVol, durationMs, onDone) {
+  const steps = 30;
+  const stepMs = durationMs / steps;
+  const delta = (toVol - fromVol) / steps;
+  let step = 0;
+  if (fadeOutTimer) clearInterval(fadeOutTimer);
+  el.volume = fromVol;
+  fadeOutTimer = setInterval(() => {
+    step++;
+    el.volume = Math.min(1, Math.max(0, fromVol + delta * step));
+    if (step >= steps) {
+      clearInterval(fadeOutTimer);
+      fadeOutTimer = null;
+      if (onDone) onDone();
+    }
+  }, stepMs);
 }
 
 function stopAll() {
   if (motionInterval) { clearInterval(motionInterval); motionInterval = null; }
   if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  if (fadeOutTimer) { clearInterval(fadeOutTimer); fadeOutTimer = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (audioEl) { audioEl.pause(); audioEl.currentTime = 0; }
   prevPixels = null;
+  isDisplaying = false;
 }
 </script>
 </body>
