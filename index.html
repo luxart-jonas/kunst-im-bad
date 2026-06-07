@@ -110,7 +110,7 @@
     <strong style="font-size:15px">Audio hochladen</strong>
     <p>MP3, WAV, OGG — läuft im Loop</p>
   </label>
-  <input type="file" id="audio-input" accept="audio/*" style="opacity:0;position:absolute;width:1px;height:1px;overflow:hidden;">
+  <input type="file" id="audio-input" accept="audio/*,video/*,.mp3,.wav,.ogg,.m4a,.aac,.mp4,.mov,*/*" style="opacity:0;position:absolute;width:1px;height:1px;overflow:hidden;">
   <div id="audio-preview">✓ <span id="audio-filename"></span></div>
 
   <hr class="divider">
@@ -217,7 +217,7 @@ audioZone.addEventListener('drop', e => {
 });
 
 function loadAudio(file) {
-  if (!file || !file.type.startsWith('audio/')) return;
+  if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
     audioDataURL = ev.target.result;
