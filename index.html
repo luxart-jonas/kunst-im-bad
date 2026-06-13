@@ -5,120 +5,215 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>Motion Display</title>
+<title>Kunst im Bad</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Jost:wght@300;400;500&display=swap');
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
     background: #000;
     color: #fff;
-    font-family: -apple-system, sans-serif;
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
     height: 100vh;
     overflow: hidden;
   }
+
+  /* ── SETUP SCREEN ─────────────────────────────────── */
   #setup-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    gap: 24px;
-    padding: 40px;
-    background: #0a0a0a;
-    overflow-y: auto;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh; gap: 22px;
+    padding: 40px; background: #0a0a0a; overflow-y: auto;
   }
-  #setup-screen h1 { font-size: 22px; font-weight: 400; letter-spacing: 0.05em; }
-  .upload-zone {
-    border: 1px dashed #444;
-    border-radius: 16px;
-    padding: 28px 48px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-    width: 100%;
-    max-width: 420px;
-    display: block;
-    position: relative;
+  #setup-screen h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px; font-weight: 400;
+    color: #c9a84c; letter-spacing: 0.04em;
   }
-  .upload-zone:active { background: #111; border-color: #888; }
-  .upload-zone p { color: #666; font-size: 14px; margin-top: 6px; }
-  .upload-zone .icon { font-size: 32px; margin-bottom: 6px; }
-  /* file input versteckt aber erreichbar für iOS */
-  .upload-zone input[type=file] {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
-    font-size: 16px; /* verhindert iOS zoom */
+  .section-label {
+    font-size: 11px; letter-spacing: 0.12em; color: #444;
+    text-transform: uppercase; align-self: flex-start; margin-bottom: -10px;
   }
-  #preview-img { max-width: 180px; max-height: 120px; border-radius: 8px; display: none; object-fit: cover; margin-top: -8px; }
-  .loaded-label { font-size: 13px; color: #4ade80; display: none; margin-top: -8px; }
-  .settings-row { display: flex; align-items: center; gap: 12px; color: #aaa; font-size: 14px; width: 100%; max-width: 420px; }
-  .settings-row label { min-width: 110px; }
-  .settings-row input[type=range] { flex: 1; accent-color: #fff; }
-  .settings-row span { min-width: 60px; color: #fff; font-size: 14px; text-align: right; }
-  .section-label { font-size: 11px; letter-spacing: 0.12em; color: #444; text-transform: uppercase; align-self: flex-start; margin-bottom: -12px; }
   .divider { width: 100%; max-width: 420px; border: none; border-top: 1px solid #1a1a1a; }
+
+  .upload-zone {
+    border: 1px dashed #333; border-radius: 16px; padding: 22px 40px;
+    text-align: center; cursor: pointer; width: 100%; max-width: 420px;
+    display: block; position: relative; background: #111;
+  }
+  .upload-zone:active { border-color: #666; }
+  .upload-zone p { color: #555; font-size: 13px; margin-top: 5px; }
+  .upload-zone .icon { font-size: 28px; margin-bottom: 5px; }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    opacity: 0; cursor: pointer; font-size: 16px;
+  }
+  .loaded-ok { font-size: 13px; color: #4ade80; display: none; margin-top: -10px; }
+
+  .settings-row {
+    display: flex; align-items: center; gap: 12px;
+    color: #888; font-size: 14px; width: 100%; max-width: 420px;
+  }
+  .settings-row label { min-width: 110px; }
+  .settings-row input[type=range] { flex: 1; accent-color: #c9a84c; }
+  .settings-row span { min-width: 60px; color: #fff; font-size: 14px; text-align: right; }
+
   .start-btn {
-    background: #fff; color: #000; border: none; border-radius: 100px;
-    padding: 14px 48px; font-size: 16px; font-weight: 500; cursor: pointer;
-    letter-spacing: 0.02em; transition: opacity 0.2s; -webkit-appearance: none;
+    background: #c9a84c; color: #000; border: none; border-radius: 100px;
+    padding: 14px 52px; font-family: 'Jost', sans-serif;
+    font-size: 14px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; cursor: pointer; -webkit-appearance: none;
+    transition: opacity 0.2s;
   }
   .start-btn:disabled { opacity: 0.3; cursor: default; }
-  .cam-hint { font-size: 12px; color: #444; text-align: center; max-width: 340px; line-height: 1.6; }
+  .hint { font-size: 12px; color: #333; text-align: center; max-width: 340px; line-height: 1.6; }
 
+  /* ── DISPLAY SCREEN ───────────────────────────────── */
   #display-screen { display: none; position: fixed; inset: 0; background: #000; user-select: none; }
-  #display-img {
+
+  /* Kunstwerk */
+  #art-img {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: contain; opacity: 0; transition: opacity 0.6s ease;
+    object-fit: contain; opacity: 0; transition: opacity 0.8s ease;
   }
-  #display-img.visible { opacity: 1; }
+  #art-img.visible { opacity: 1; }
+
+  /* Titel-Leiste unten */
+  #title-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 40px 32px 28px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75));
+    opacity: 0; transition: opacity 0.8s ease;
+    pointer-events: none;
+  }
+  #title-bar.visible { opacity: 1; }
+  #title-bar .art-titel {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic; font-size: 22px; font-weight: 400;
+    color: #fff; margin-bottom: 4px;
+  }
+  #title-bar .art-artist {
+    font-size: 13px; color: rgba(255,255,255,0.6);
+    letter-spacing: 0.06em;
+  }
+
+  /* Info Button (rot) */
+  #info-btn {
+    position: absolute; bottom: 28px; right: 28px;
+    width: 88px; height: 88px; border-radius: 50%;
+    background: #c0392b; border: none;
+    color: #fff; font-size: 36px; font-weight: 600;
+    cursor: pointer; -webkit-appearance: none;
+    opacity: 0; transition: opacity 0.8s ease;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(192,57,43,0.6);
+  }
+  #info-btn.visible { opacity: 1; pointer-events: auto; }
+
+  /* Funfact Overlay */
+  #funfact-overlay {
+    display: none; position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    align-items: center; justify-content: center;
+    padding: 40px 32px;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  #funfact-overlay.open { display: flex; }
+  .funfact-box {
+    max-width: 520px; width: 100%;
+    background: rgba(0,0,0,0.55);
+    border-radius: 16px; padding: 28px 32px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .funfact-box .ff-label {
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: #c9a84c; margin-bottom: 16px;
+  }
+  .funfact-box .ff-titel {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic; font-size: 24px;
+    color: #fff; margin-bottom: 6px;
+  }
+  .funfact-box .ff-artist {
+    font-size: 13px; color: rgba(255,255,255,0.5);
+    letter-spacing: 0.06em; margin-bottom: 24px;
+  }
+  .funfact-box .ff-text {
+    font-size: 16px; line-height: 1.75;
+    color: rgba(255,255,255,0.85);
+  }
+  #back-btn {
+    margin-top: 32px; background: transparent;
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 100px;
+    padding: 10px 28px; color: rgba(255,255,255,0.5);
+    font-family: 'Jost', sans-serif; font-size: 12px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    cursor: pointer; -webkit-appearance: none;
+  }
+
+  /* Kamera + Canvas */
   #video-feed { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   canvas#diff-canvas { display: none; }
-  #status-bar {
-    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
-    background: rgba(255,255,255,0.08); border: 0.5px solid rgba(255,255,255,0.15);
-    border-radius: 100px; padding: 8px 20px; font-size: 12px;
-    color: rgba(255,255,255,0.5); letter-spacing: 0.06em; white-space: nowrap;
-  }
-  #exit-btn {
-    position: absolute; top: 20px; right: 20px;
-    background: rgba(255,255,255,0.08); border: 0.5px solid rgba(255,255,255,0.15);
-    border-radius: 100px; padding: 10px 20px; font-size: 13px;
-    color: rgba(255,255,255,0.6); cursor: pointer; -webkit-appearance: none;
-  }
+
+  /* Status + Steuerung */
   #motion-dot {
-    position: absolute; top: 26px; left: 20px;
-    width: 8px; height: 8px; border-radius: 50%; background: #333; transition: background 0.2s;
+    position: absolute; top: 22px; left: 22px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #222; transition: background 0.2s;
   }
   #motion-dot.active { background: #4ade80; }
+  #exit-btn {
+    position: absolute; top: 14px; right: 14px;
+    background: rgba(255,255,255,0.07); border: 0.5px solid rgba(255,255,255,0.12);
+    border-radius: 100px; padding: 8px 16px; font-size: 12px;
+    color: rgba(255,255,255,0.4); cursor: pointer; -webkit-appearance: none;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  #display-screen:hover #exit-btn { opacity: 1; }
+  #status-bar {
+    position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,255,255,0.06); border: 0.5px solid rgba(255,255,255,0.1);
+    border-radius: 100px; padding: 7px 18px; font-size: 11px;
+    color: rgba(255,255,255,0.35); letter-spacing: 0.08em; white-space: nowrap;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  #display-screen:hover #status-bar { opacity: 1; }
 </style>
 </head>
 <body>
 
+<!-- ── SETUP ─────────────────────────────────────────── -->
 <div id="setup-screen">
-  <h1>Motion Display</h1>
+  <h1>Kunst im Bad</h1>
 
-  <span class="section-label">Bild</span>
-  <label class="upload-zone" id="upload-zone">
-    <div class="icon">🖼️</div>
-    <strong style="font-size:15px">Bild hochladen</strong>
-    <p>Tippen zum Auswählen</p>
-    <input type="file" id="file-input" accept="*/*">
-  </label>
-  <img id="preview-img" alt="Vorschau">
-
-  <hr class="divider">
   <span class="section-label">Sound (optional)</span>
-
   <label class="upload-zone" id="audio-zone">
     <div class="icon">🔊</div>
-    <strong id="audio-label-text" style="font-size:15px">Audio hochladen</strong>
-    <p id="audio-label-sub">MP3, WAV — läuft im Loop</p>
+    <strong style="font-size:14px">Audio hochladen</strong>
+    <p>MP3, WAV — läuft im Loop</p>
     <input type="file" id="audio-input" accept="*/*">
   </label>
-  <div class="loaded-label" id="audio-loaded">✓ Datei geladen</div>
+  <div class="loaded-ok" id="audio-loaded">✓ Audio geladen</div>
+
+  <hr class="divider">
+  <span class="section-label">Filter (optional)</span>
+  <div style="width:100%;max-width:420px;position:relative;">
+    <input type="text" id="filter-input" placeholder="z.B. Judith · Caravaggio · Barock …"
+      style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:100px;
+             padding:12px 44px 12px 18px;color:#fff;font-family:'Jost',sans-serif;
+             font-size:14px;font-weight:300;outline:none;-webkit-appearance:none;
+             letter-spacing:0.02em;"
+      autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="filter-clear" onclick="document.getElementById('filter-input').value='';updateFilterHint()"
+      style="position:absolute;right:14px;top:50%;transform:translateY(-50%);
+             background:none;border:none;color:#444;font-size:16px;cursor:pointer;
+             line-height:1;padding:4px;display:none;">✕</button>
+  </div>
+  <div id="filter-hint" style="font-size:12px;color:#555;text-align:center;max-width:340px;line-height:1.5;margin-top:-8px;min-height:16px;"></div>
 
   <hr class="divider">
   <span class="section-label">Einstellungen</span>
@@ -139,22 +234,46 @@
     <span id="volume-label">70%</span>
   </div>
 
-  <button class="start-btn" id="start-btn" disabled>Starten</button>
-  <p class="cam-hint">Nutzt die Frontkamera. iPad so ausrichten dass die Frontkamera den Raum erfasst.</p>
+  <button class="start-btn" id="start-btn">Starten</button>
+  <p class="hint">Frontkamera erkennt Bewegung. iPad so ausrichten dass die Kamera den Raum erfasst.</p>
 </div>
 
+<!-- ── DISPLAY ───────────────────────────────────────── -->
 <div id="display-screen">
-  <img id="display-img" alt="">
+  <img id="art-img" alt="">
   <video id="video-feed" autoplay muted playsinline></video>
-  <canvas id="diff-canvas" width="160" height="120"></canvas>
+  <canvas id="diff-canvas" width="80" height="60"></canvas>
+
+  <div id="title-bar">
+    <div class="art-titel" id="d-titel"></div>
+    <div class="art-artist" id="d-artist"></div>
+  </div>
+
+  <button id="info-btn">i</button>
+
+  <div id="funfact-overlay">
+    <div class="funfact-box">
+      <div class="ff-label">Funfact</div>
+      <div class="ff-titel" id="ff-titel"></div>
+      <div class="ff-artist" id="ff-artist"></div>
+      <div class="ff-text" id="ff-text"></div>
+      <button id="back-btn">← Zurück</button>
+    </div>
+  </div>
+
   <div id="motion-dot"></div>
   <div id="status-bar">WARTEN AUF BEWEGUNG</div>
   <button id="exit-btn">✕ Beenden</button>
 </div>
 
 <script>
-let imageObjectURL = null;
-let audioObjectURL = null;
+const SUPABASE_URL = 'https://ormpszktwwiahjooukjk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ybXBzemt0d3dpYWhqb291a2prIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NzM5NTAsImV4cCI6MjA5NjQ0OTk1MH0.Jz4rKTlrvRbfdxS1e8fRkwXeD3CJsITeC6Q4lDBjfCc';
+const TABLE = 'kunstwerke';
+
+let kunstwerke = [];
+let kunstwerkeFiltered = [];
+let currentIndex = -1;
 let displayDuration = 180;
 let sensitivityThreshold = 20;
 let volume = 0.7;
@@ -166,144 +285,220 @@ let isDisplaying = false;
 let audioEl = null;
 let audioUnlocked = false;
 let fadeTimer = null;
+const W = 80, H = 60;
 
-const fileInput    = document.getElementById('file-input');
-const audioInput   = document.getElementById('audio-input');
-const previewImg   = document.getElementById('preview-img');
-const audioLoaded  = document.getElementById('audio-loaded');
-const audioLabelText = document.getElementById('audio-label-text');
-const audioLabelSub  = document.getElementById('audio-label-sub');
-const startBtn     = document.getElementById('start-btn');
-const durationSlider   = document.getElementById('duration-slider');
-const durationLabel    = document.getElementById('duration-label');
+const audioInput      = document.getElementById('audio-input');
+const audioLoaded     = document.getElementById('audio-loaded');
+const audioZone       = document.getElementById('audio-zone');
+const startBtn        = document.getElementById('start-btn');
+const durationSlider  = document.getElementById('duration-slider');
+const durationLabel   = document.getElementById('duration-label');
 const sensitivitySlider = document.getElementById('sensitivity-slider');
 const sensitivityLabel  = document.getElementById('sensitivity-label');
-const volumeSlider = document.getElementById('volume-slider');
-const volumeLabel  = document.getElementById('volume-label');
-const displayScreen = document.getElementById('display-screen');
-const displayImg   = document.getElementById('display-img');
-const videoFeed    = document.getElementById('video-feed');
-const diffCanvas   = document.getElementById('diff-canvas');
-const motionDot    = document.getElementById('motion-dot');
-const statusBar    = document.getElementById('status-bar');
-const exitBtn      = document.getElementById('exit-btn');
-const ctx = diffCanvas.getContext('2d');
+const volumeSlider    = document.getElementById('volume-slider');
+const volumeLabel     = document.getElementById('volume-label');
+const displayScreen   = document.getElementById('display-screen');
+const artImg          = document.getElementById('art-img');
+const titleBar        = document.getElementById('title-bar');
+const infoBtn         = document.getElementById('info-btn');
+const funfactOverlay  = document.getElementById('funfact-overlay');
+const backBtn         = document.getElementById('back-btn');
+const videoFeed       = document.getElementById('video-feed');
+const diffCanvas      = document.getElementById('diff-canvas');
+const motionDot       = document.getElementById('motion-dot');
+const statusBar       = document.getElementById('status-bar');
+const exitBtn         = document.getElementById('exit-btn');
+const ctx             = diffCanvas.getContext('2d');
 
-// Bild
-fileInput.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (imageObjectURL) URL.revokeObjectURL(imageObjectURL);
-  imageObjectURL = URL.createObjectURL(file);
-  previewImg.src = imageObjectURL;
-  previewImg.style.display = 'block';
-  startBtn.disabled = false;
-});
+// ── Filter ────────────────────────────────────────────
+const filterInput = document.getElementById('filter-input');
+const filterClear = document.getElementById('filter-clear');
+const filterHint  = document.getElementById('filter-hint');
 
-// Audio
+function applyFilter(all) {
+  const q = filterInput.value.trim().toLowerCase();
+  if (!q) return all;
+  return all.filter(w =>
+    (w.titel  || '').toLowerCase().includes(q) ||
+    (w.artist || '').toLowerCase().includes(q) ||
+    (w.funfact|| '').toLowerCase().includes(q) ||
+    (w.year   || '').toString().includes(q)
+  );
+}
+
+function updateFilterHint() {
+  const q = filterInput.value.trim();
+  filterClear.style.display = q ? 'block' : 'none';
+  if (!q) { filterHint.textContent = ''; return; }
+  // live preview only after artworks loaded
+  if (kunstwerke.length) {
+    const n = applyFilter(kunstwerke).length;
+    filterHint.textContent = n ? `${n} Werk${n===1?'':'e'} gefunden` : 'Keine Treffer — Filter wird ignoriert';
+    filterHint.style.color = n ? '#4ade80' : '#c0392b';
+  } else {
+    filterHint.textContent = 'Filter aktiv';
+    filterHint.style.color = '#c9a84c';
+  }
+}
+
+filterInput.addEventListener('input', updateFilterHint);
+
+// ── Audio ─────────────────────────────────────────────
 audioInput.addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
-  if (audioObjectURL) URL.revokeObjectURL(audioObjectURL);
-  audioObjectURL = URL.createObjectURL(file);
-  const name = file.name.length > 26 ? file.name.slice(0,24)+'…' : file.name;
-  audioLabelText.textContent = name;
-  audioLabelSub.textContent = 'Anderes auswählen';
-  audioLoaded.style.display = 'block';
-  // Audio-Element sofort anlegen damit iOS es kennt
-  audioEl = new Audio();
-  audioEl.src = audioObjectURL;
+  const url = URL.createObjectURL(file);
+  audioEl = new Audio(url);
   audioEl.loop = true;
   audioEl.volume = 0;
   audioEl.load();
+  const name = file.name.length > 26 ? file.name.slice(0,24)+'…' : file.name;
+  audioZone.querySelector('strong').textContent = name;
+  audioZone.querySelector('p').textContent = 'Anderes auswählen';
+  audioLoaded.style.display = 'block';
 });
 
-// Slider
+// ── Slider ────────────────────────────────────────────
 durationSlider.addEventListener('input', () => {
   displayDuration = parseInt(durationSlider.value);
-  const m = Math.floor(displayDuration / 60);
-  const s = displayDuration % 60;
-  durationLabel.textContent = s === 0 ? `${m}:00 min` : `${m}:${String(s).padStart(2,'0')} min`;
+  const m = Math.floor(displayDuration/60), s = displayDuration%60;
+  durationLabel.textContent = s===0 ? `${m}:00 min` : `${m}:${String(s).padStart(2,'0')} min`;
 });
 sensitivitySlider.addEventListener('input', () => {
   sensitivityThreshold = parseInt(sensitivitySlider.value);
   const map = {5:'Sehr hoch',15:'Hoch',25:'Mittel',35:'Niedrig',50:'Sehr niedrig'};
-  const k = Object.keys(map).reduce((a,b) => Math.abs(b-sensitivityThreshold) < Math.abs(a-sensitivityThreshold) ? b : a);
+  const k = Object.keys(map).reduce((a,b) => Math.abs(b-sensitivityThreshold)<Math.abs(a-sensitivityThreshold)?b:a);
   sensitivityLabel.textContent = map[k];
 });
 volumeSlider.addEventListener('input', () => {
-  volume = parseInt(volumeSlider.value) / 100;
-  volumeLabel.textContent = volumeSlider.value + '%';
+  volume = parseInt(volumeSlider.value)/100;
+  volumeLabel.textContent = volumeSlider.value+'%';
   if (audioEl) audioEl.volume = volume;
 });
 
-// Start — der Tap auf diesen Button ist der User-Gesture für iOS Audio
+// ── Start ─────────────────────────────────────────────
 startBtn.addEventListener('click', async () => {
-  // iOS Audio freischalten: kurz play/pause im direkten Tap-Handler
+  // iOS Audio freischalten
   if (audioEl) {
     audioEl.volume = 0;
-    audioEl.play().then(() => {
-      audioEl.pause();
-      audioEl.currentTime = 0;
-      audioUnlocked = true;
-    }).catch(() => { audioUnlocked = true; });
+    audioEl.play().then(() => { audioEl.pause(); audioEl.currentTime = 0; audioUnlocked = true; })
+           .catch(() => { audioUnlocked = true; });
+  } else { audioUnlocked = true; }
+
+  startBtn.disabled = true;
+  startBtn.textContent = 'Wird geladen…';
+
+  // Kunstwerke von Supabase laden
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?select=*`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    kunstwerke = await res.json();
+    if (!kunstwerke.length) { alert('Noch keine Kunstwerke gespeichert. Bitte zuerst die Fütt-App nutzen.'); startBtn.disabled = false; startBtn.textContent = 'Starten'; return; }
+    kunstwerkeFiltered = applyFilter(kunstwerke);
+    if (!kunstwerkeFiltered.length) {
+      const q = filterInput.value.trim();
+      alert(`Kein Kunstwerk passt zum Filter „${q}".\nFilter wird ignoriert — alle ${kunstwerke.length} Werke werden gezeigt.`);
+      kunstwerkeFiltered = kunstwerke;
+    }
+    updateFilterHint();
+  } catch(e) {
+    alert('Fehler beim Laden der Kunstwerke: ' + e.message);
+    startBtn.disabled = false; startBtn.textContent = 'Starten'; return;
   }
 
+  // Kamera starten
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+      video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } }
     });
-    await launch();
-  } catch(err) {
-    alert('Kamera konnte nicht gestartet werden: ' + err.message);
+  } catch(e) {
+    alert('Kamera konnte nicht gestartet werden: ' + e.message);
+    startBtn.disabled = false; startBtn.textContent = 'Starten'; return;
   }
-});
 
-async function launch() {
   videoFeed.srcObject = stream;
   await new Promise(res => videoFeed.addEventListener('loadeddata', res, { once: true }));
-  displayImg.src = imageObjectURL;
+
   document.getElementById('setup-screen').style.display = 'none';
   displayScreen.style.display = 'block';
+  loadRandomArtwork();
   startMotionDetection();
+});
+
+// ── Zufälliges Kunstwerk laden ────────────────────────
+function loadRandomArtwork() {
+  if (!kunstwerkeFiltered.length) return;
+  let idx;
+  do { idx = Math.floor(Math.random() * kunstwerkeFiltered.length); }
+  while (kunstwerkeFiltered.length > 1 && idx === currentIndex);
+  currentIndex = idx;
+  const w = kunstwerkeFiltered[idx];
+
+  artImg.src = w.image_url;
+  document.getElementById('d-titel').textContent = w.titel || '';
+  document.getElementById('d-artist').textContent = [w.artist, w.year].filter(Boolean).join(' · ');
+  document.getElementById('ff-titel').textContent = w.titel || '';
+  document.getElementById('ff-artist').textContent = [w.artist, w.year].filter(Boolean).join(' · ');
+  document.getElementById('ff-text').textContent = w.funfact || '';
 }
 
+// ── Info Button ───────────────────────────────────────
+infoBtn.addEventListener('click', () => {
+  funfactOverlay.classList.add('open');
+});
+backBtn.addEventListener('click', () => {
+  funfactOverlay.classList.remove('open');
+});
+
+// ── Exit ──────────────────────────────────────────────
 exitBtn.addEventListener('click', () => {
   stopAll();
   document.getElementById('setup-screen').style.display = 'flex';
   displayScreen.style.display = 'none';
-  isDisplaying = false;
-  displayImg.classList.remove('visible');
+  artImg.classList.remove('visible');
+  titleBar.classList.remove('visible');
+  infoBtn.classList.remove('visible');
+  funfactOverlay.classList.remove('open');
   statusBar.textContent = 'WARTEN AUF BEWEGUNG';
+  startBtn.disabled = false;
+  startBtn.textContent = 'Starten';
 });
 
+// ── Bewegungserkennung ────────────────────────────────
 function startMotionDetection() {
   prevPixels = null;
-  motionInterval = setInterval(checkMotion, 200);
+  scheduleNext();
 }
-
+function scheduleNext() {
+  const interval = isDisplaying ? 600 : 300;
+  motionInterval = setTimeout(() => { checkMotion(); scheduleNext(); }, interval);
+}
 function checkMotion() {
   if (videoFeed.readyState < 2) return;
-  ctx.drawImage(videoFeed, 0, 0, 160, 120);
-  const pixels = ctx.getImageData(0, 0, 160, 120).data;
+  ctx.drawImage(videoFeed, 0, 0, W, H);
+  const pixels = ctx.getImageData(0, 0, W, H).data;
   if (!prevPixels) { prevPixels = new Uint8ClampedArray(pixels); return; }
   let diff = 0;
-  for (let i = 0; i < pixels.length; i += 4) {
+  for (let i = 0; i < pixels.length; i += 4)
     diff += Math.abs(pixels[i]-prevPixels[i]) + Math.abs(pixels[i+1]-prevPixels[i+1]) + Math.abs(pixels[i+2]-prevPixels[i+2]);
-  }
   prevPixels = new Uint8ClampedArray(pixels);
-  if (diff / (160*120*3) > (51 - sensitivityThreshold)) {
+  if (diff / (W*H*3) > (51-sensitivityThreshold)) {
     motionDot.classList.add('active');
     setTimeout(() => motionDot.classList.remove('active'), 300);
     onMotionDetected();
   }
 }
 
+// ── Motion Event ──────────────────────────────────────
 function onMotionDetected() {
   if (hideTimer) clearTimeout(hideTimer);
+
   if (!isDisplaying) {
     isDisplaying = true;
-    displayImg.classList.add('visible');
+    artImg.classList.add('visible');
+    titleBar.classList.add('visible');
+    infoBtn.classList.add('visible');
     statusBar.textContent = 'AKTIV';
     if (audioEl && audioUnlocked) {
       audioEl.currentTime = 0;
@@ -311,8 +506,14 @@ function onMotionDetected() {
       fadeAudio(0, volume, 1500);
     }
   }
+
   hideTimer = setTimeout(() => {
-    displayImg.classList.remove('visible');
+    // Neues Bild wählen beim Ausblenden
+    loadRandomArtwork();
+    artImg.classList.remove('visible');
+    titleBar.classList.remove('visible');
+    infoBtn.classList.remove('visible');
+    funfactOverlay.classList.remove('open');
     isDisplaying = false;
     statusBar.textContent = 'WARTEN AUF BEWEGUNG';
     hideTimer = null;
@@ -320,29 +521,27 @@ function onMotionDetected() {
   }, displayDuration * 1000);
 }
 
+// ── Audio Fade ────────────────────────────────────────
 function fadeAudio(fromVol, toVol, durationMs, onDone) {
   if (fadeTimer) clearInterval(fadeTimer);
-  const steps = 30;
-  const delta = (toVol - fromVol) / steps;
+  const steps = 30, delta = (toVol-fromVol)/steps;
   let step = 0;
   audioEl.volume = fromVol;
   fadeTimer = setInterval(() => {
     step++;
-    audioEl.volume = Math.min(1, Math.max(0, fromVol + delta * step));
-    if (step >= steps) {
-      clearInterval(fadeTimer); fadeTimer = null;
-      if (onDone) onDone();
-    }
-  }, durationMs / steps);
+    audioEl.volume = Math.min(1, Math.max(0, fromVol + delta*step));
+    if (step >= steps) { clearInterval(fadeTimer); fadeTimer = null; if (onDone) onDone(); }
+  }, durationMs/steps);
 }
 
 function stopAll() {
-  if (motionInterval) { clearInterval(motionInterval); motionInterval = null; }
+  if (motionInterval) { clearTimeout(motionInterval); motionInterval = null; }
   if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
   if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   if (audioEl) { audioEl.pause(); audioEl.currentTime = 0; }
   prevPixels = null; isDisplaying = false; audioUnlocked = false;
+  kunstwerkeFiltered = [];
 }
 </script>
 </body>
